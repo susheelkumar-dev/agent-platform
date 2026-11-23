@@ -24,11 +24,13 @@ class Settings(BaseSettings):
 
     # Free-tier LLM providers, tried in this order. A provider without a key is skipped.
     groq_api_key: SecretStr | None = None
-    groq_model: str = "llama-3.3-70b-versatile"
+    # Free-tier model names change: these were checked with tool calling on 2026-11-23. Override per deployment
+    # with GROQ_MODEL / GEMINI_MODEL / OPENROUTER_MODEL (no rebuild needed).
+    groq_model: str = "openai/gpt-oss-120b"
     google_api_key: SecretStr | None = None
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash"
     openrouter_api_key: SecretStr | None = None
-    openrouter_model: str = "meta-llama/llama-3.3-70b-instruct:free"
+    openrouter_model: str = "inclusionai/ling-3.2-flash:free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     llm_timeout_seconds: float = 45.0
     llm_max_retries: int = 1

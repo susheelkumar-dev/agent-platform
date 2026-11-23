@@ -238,3 +238,17 @@ only for you) → publish → it appears under "Built in the portfolio" in `/lab
 | GridTrade menu empty / sign-in loops | `Lab:GridTrade:JwtSecret` differs from the container's `GT_JWT_SECRET` |
 | "A model provider is busy" | free-tier rate limit on every configured provider; add another provider key or wait |
 | Revision unhealthy on Azure | `az containerapp logs show -n agent-service -g rg-ai-lab` shows which setting is missing |
+
+### Model names on free tiers
+
+Providers retire free models without notice (on 2026-11-23 Groq had removed `llama-3.3-70b-versatile` and Google had
+closed `gemini-2.5-flash` to new users). A retired model shows as `NotFoundError` / `model_not_found` in
+`az containerapp logs show`. Fix it without a rebuild:
+
+```bash
+az containerapp update -n agent-service -g rg-ai-lab \
+  --set-env-vars GROQ_MODEL=<id> GEMINI_MODEL=<id> OPENROUTER_MODEL=<id>:free
+```
+
+Current ids: Groq `GET https://api.groq.com/openai/v1/models`, Gemini `GET .../v1beta/models?key=...`,
+OpenRouter `https://openrouter.ai/models?max_price=0` (pick one that supports tools).
