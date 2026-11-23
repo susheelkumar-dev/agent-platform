@@ -172,13 +172,19 @@ SUB=$(az account show --query id -o tsv)
 APP_ID=$(az ad app create --display-name gh-ai-lab-deploy --query appId -o tsv)
 az ad sp create --id $APP_ID >/dev/null
 az role assignment create --assignee $APP_ID --role Contributor --scope /subscriptions/$SUB/resourceGroups/$RG
+# GitHub's token subject carries immutable ids: repo:<owner>@<owner-id>/<repo>@<repo-id>:environment:production
+OWNER_ID=$(curl -s https://api.github.com/users/$OWNER | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
 for repo in agent-platform gridtrade-extjs; do
+  REPO_ID=$(curl -s https://api.github.com/repos/$OWNER/$repo | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
   az ad app federated-credential create --id $APP_ID --parameters "{\"name\":\"$repo-production\",
     \"issuer\":\"https://token.actions.githubusercontent.com\",
-    \"subject\":\"repo:$OWNER/$repo:environment:production\",\"audiences\":[\"api://AzureADTokenExchange\"]}"
+    \"subject\":\"repo:$OWNER@$OWNER_ID/$repo@$REPO_ID:environment:production\",\"audiences\":[\"api://AzureADTokenExchange\"]}"
 done
 echo "AZURE_CLIENT_ID=$APP_ID  AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)  AZURE_SUBSCRIPTION_ID=$SUB"
 ```
+
+If a deploy job fails with `AADSTS700213: No matching federated identity record`, the log line
+`subject claim - repo:...` shows the exact subject GitHub presents; the credential's subject must equal it.
 
 In **each** of the two repos on GitHub: Settings > Environments > **New environment** `production`; Settings >
 Secrets and variables > Actions: secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, and the
