@@ -1,0 +1,7 @@
+*
+!requirements.txt
+!main.py
+!agentsvc/
+!data/
+**/__pycache__
+**/*.pyc

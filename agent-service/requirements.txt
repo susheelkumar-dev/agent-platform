@@ -1,0 +1,13 @@
+# Runtime dependencies (pinned; no torch / sentence-transformers: embeddings and models are remote APIs)
+fastapi==0.165.0
+uvicorn[standard]==0.54.0
+pydantic-settings==2.16.3
+httpx==0.28.1
+langchain-core==1.8.4
+langgraph==1.2.24
+langgraph-checkpoint-postgres==3.2.1
+psycopg[binary]==3.3.9
+psycopg-pool==3.3.3
+langchain-groq==1.2.1
+langchain-google-genai==4.5.2
+langchain-openai==1.8.5

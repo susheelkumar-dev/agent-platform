@@ -1,0 +1,13 @@
+# Agents only accept traffic from the platform (defence in depth on top of tokens + HMAC signatures).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agents-ingress-from-platform-only
+  namespace: agent-platform
+spec:
+  podSelector: {matchLabels: {agent-platform/role: agent}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {agent-platform/role: platform}}
+      ports: [{port: 8080}]

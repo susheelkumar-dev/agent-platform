@@ -1,0 +1,74 @@
+# Full local stack: PostgreSQL + platform + two independently deployed agents.
+#   docker compose up --build
+#   open http://localhost:8000
+name: agent-platform
+
+x-secrets: &secrets
+  REGISTRATION_TOKEN: ${REGISTRATION_TOKEN:-platform-demo-registration-token}
+  AGENT_SERVICE_TOKEN: ${AGENT_SERVICE_TOKEN:-agent-demo-service-token}
+  SIGNING_SECRET: ${SIGNING_SECRET:-dev-signing-secret-change-me-0123456789}
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: agent_platform
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agent}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent -d agent_platform"]
+      interval: 5s
+      retries: 10
+
+  migrate:
+    build: {context: ., dockerfile: deploy/docker/platform.Dockerfile}
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://agent:${POSTGRES_PASSWORD:-agent}@postgres:5432/agent_platform
+    depends_on: {postgres: {condition: service_healthy}}
+
+  platform:
+    build: {context: ., dockerfile: deploy/docker/platform.Dockerfile}
+    ports: ["8000:8000"]
+    environment:
+      <<: *secrets
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://agent:${POSTGRES_PASSWORD:-agent}@postgres:5432/agent_platform
+      AUTO_CREATE_SCHEMA: "false"
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_MODEL: ${LLM_MODEL:-mock-1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      ALLOWED_AGENT_HOSTS: '["inventory-agent","exposure-agent","*.local"]'
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+
+  inventory-agent:
+    build:
+      context: .
+      dockerfile: deploy/docker/agent.Dockerfile
+      args: {AGENT_DIR: examples/agents/inventory_agent}
+    environment:
+      AGENT_PLATFORM_URL: http://platform:8000
+      AGENT_SERVICE_URL: http://inventory-agent:8080
+      AGENT_REGISTRATION_TOKEN: ${REGISTRATION_TOKEN:-platform-demo-registration-token}
+      AGENT_SERVICE_TOKEN: ${AGENT_SERVICE_TOKEN:-agent-demo-service-token}
+      AGENT_SIGNING_SECRET: ${SIGNING_SECRET:-dev-signing-secret-change-me-0123456789}
+    depends_on: [platform]
+
+  exposure-agent:
+    build:
+      context: .
+      dockerfile: deploy/docker/agent.Dockerfile
+      args: {AGENT_DIR: examples/agents/exposure_agent}
+    environment:
+      AGENT_PLATFORM_URL: http://platform:8000
+      AGENT_SERVICE_URL: http://exposure-agent:8080
+      AGENT_REGISTRATION_TOKEN: ${REGISTRATION_TOKEN:-platform-demo-registration-token}
+      AGENT_SERVICE_TOKEN: ${AGENT_SERVICE_TOKEN:-agent-demo-service-token}
+      AGENT_SIGNING_SECRET: ${SIGNING_SECRET:-dev-signing-secret-change-me-0123456789}
+    deploy: {replicas: 1}
+    depends_on: [platform]
+
+volumes:
+  postgres_data:

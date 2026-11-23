@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agent Platform</title>
+<style>
+  :root {
+    --bg: #ffffff; --panel: #f7f7f8; --panel-2: #efeff1; --border: #e3e3e6; --text: #1d1d20;
+    --muted: #6b6f76; --accent: #0f766e; --accent-soft: #e6f4f2; --user: #f4f4f5; --danger: #b42318;
+    --warn: #b54708; --ok: #067647; --code: #f4f4f5;
+    --s1: #0f766e; --s2: #c2410c; --s3: #4f46e5; --s4: #a21caf; --s5: #0369a1; --s6: #4d7c0f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416; --panel: #1b1b1f; --panel-2: #232328; --border: #2e2e34; --text: #ececf0;
+      --muted: #9a9ca5; --accent: #2dd4bf; --accent-soft: #10302d; --user: #1f1f24; --danger: #f97066;
+      --warn: #fdb022; --ok: #47cd89; --code: #1f1f24;
+      --s1: #2dd4bf; --s2: #fb923c; --s3: #818cf8; --s4: #e879f9; --s5: #38bdf8; --s6: #a3e635;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+         color: var(--text); background: var(--bg); height: 100vh; overflow: hidden; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  .app { display: grid; grid-template-columns: 260px 1fr; height: 100vh; }
+  .app.with-agents { grid-template-columns: 260px 1fr 320px; }
+  aside { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column;
+          min-height: 0; padding: 12px; }
+  .brand { display: flex; gap: 10px; align-items: center; font-weight: 700; padding: 6px 6px 14px; }
+  .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--bg);
+          display: grid; place-items: center; font-size: 12px; }
+  .btn { border: 1px solid var(--border); background: var(--bg); border-radius: 8px; padding: 8px 12px;
+         cursor: pointer; text-align: left; }
+  .btn:hover { background: var(--panel-2); }
+  .btn.small { padding: 3px 8px; font-size: 12px; }
+  .label { color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 14px 6px 6px; }
+  .history { overflow-y: auto; flex: 1; min-height: 0; }
+  .history-item { padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; white-space: nowrap;
+                  overflow: hidden; text-overflow: ellipsis; }
+  .history-item:hover, .history-item.active { background: var(--panel-2); }
+  .who { border-top: 1px solid var(--border); padding-top: 10px; font-size: 12px; color: var(--muted); }
+  .who select, .who input { width: 100%; margin-top: 6px; padding: 6px 8px; border-radius: 7px;
+                            border: 1px solid var(--border); background: var(--bg); }
+  main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  header { height: 54px; border-bottom: 1px solid var(--border); display: flex; align-items: center;
+           justify-content: space-between; padding: 0 20px; gap: 12px; }
+  header .title { font-weight: 600; }
+  .status { font-size: 12px; color: var(--muted); display: flex; gap: 12px; align-items: center; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--muted); }
+  .dot.healthy, .dot.ok { background: var(--ok); } .dot.degraded, .dot.unknown { background: var(--warn); }
+  .dot.unhealthy, .dot.offline, .dot.bad { background: var(--danger); }
+  #chat { flex: 1; overflow-y: auto; padding: 24px 0 24px; }
+  .welcome { max-width: 760px; margin: 8vh auto 0; padding: 0 24px; }
+  .welcome h1 { font-size: 28px; margin: 0 0 6px; }
+  .welcome p { color: var(--muted); margin: 0 0 22px; }
+  .suggestions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .suggestion { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--bg);
+                cursor: pointer; text-align: left; }
+  .suggestion:hover { background: var(--panel); }
+  .suggestion strong { display: block; font-size: 14px; }
+  .suggestion span { color: var(--muted); font-size: 12px; }
+  .msg { padding: 18px 24px; }
+  .msg.user { background: var(--user); }
+  .msg-inner { max-width: 860px; margin: 0 auto; display: flex; gap: 14px; }
+  .avatar { flex: 0 0 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; font-size: 11px;
+            font-weight: 700; background: var(--text); color: var(--bg); }
+  .msg.assistant .avatar { background: var(--accent); }
+  .body { min-width: 0; flex: 1; }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .text.error { color: var(--danger); }
+  .timeline { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+  .step { font-size: 12px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px;
+          display: inline-flex; gap: 6px; align-items: center; background: var(--bg); }
+  .step .dot { width: 7px; height: 7px; }
+  .step.RUNNING .dot { background: var(--warn); animation: pulse 1s infinite; }
+  .step.SUCCEEDED .dot { background: var(--ok); } .step.FAILED .dot { background: var(--danger); }
+  .step.SKIPPED, .step.CANCELLED { opacity: .6; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .meta { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--muted); }
+  .chip { border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+  .chip.st-COMPLETED { color: var(--ok); } .chip.st-FAILED, .chip.st-REJECTED { color: var(--danger); }
+  details.exec { margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; }
+  details.exec summary { cursor: pointer; padding: 6px 10px; font-size: 12px; color: var(--muted); }
+  details.exec pre { margin: 0; padding: 10px; max-height: 360px; overflow: auto; font-size: 11px; background: var(--code); }
+  .blocks { display: grid; gap: 12px; margin-top: 12px; }
+  .metrics { display: flex; flex-wrap: wrap; gap: 10px; }
+  .metric { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; min-width: 200px; }
+  .metric .t { color: var(--muted); font-size: 12px; } .metric .v { font-size: 22px; font-weight: 700;
+               font-variant-numeric: tabular-nums; }
+  .card { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .card-title { padding: 9px 12px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--border); }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { background: var(--panel); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .chart { padding: 10px 12px 4px; }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .chart text { fill: var(--muted); font-size: 11px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); padding: 0 12px 10px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+  .cites { padding: 6px 12px 10px; font-size: 13px; }
+  .cites li { margin: 6px 0; } .cites .src { color: var(--muted); font-size: 12px; }
+  .composer-wrap { padding: 10px 24px 16px; border-top: 1px solid var(--border); }
+  .composer { max-width: 860px; margin: auto; display: flex; gap: 8px; align-items: flex-end;
+              border: 1px solid var(--border); border-radius: 14px; padding: 6px; background: var(--bg); }
+  textarea { flex: 1; border: 0; outline: 0; resize: none; min-height: 40px; max-height: 180px; padding: 9px 8px;
+             background: transparent; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 9px; border: 0; cursor: pointer; flex: 0 0 36px;
+              background: var(--panel-2); }
+  .send { background: var(--accent); color: var(--bg); }
+  .send:disabled { opacity: .4; cursor: default; }
+  .files { max-width: 860px; margin: 6px auto 0; font-size: 12px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; }
+  .hint { max-width: 860px; margin: 6px auto 0; font-size: 11px; color: var(--muted); text-align: center; }
+  .agents { border-left: 1px solid var(--border); border-right: 0; overflow-y: auto; display: none; }
+  .app.with-agents .agents { display: block; }
+  .agent { border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 8px; background: var(--bg); font-size: 13px; }
+  .agent .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .agent .caps { color: var(--muted); font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+  .agent .sub { color: var(--muted); font-size: 11px; }
+  @media (max-width: 900px) {
+    .app, .app.with-agents { grid-template-columns: 1fr; }
+    aside.side { display: none; }
+    .app.with-agents .agents { position: fixed; inset: 54px 0 0 0; z-index: 5; }
+    .hint { display: none; }
+    .suggestions { grid-template-columns: 1fr; }
+    .msg { padding: 14px 16px; }
+    header, .composer-wrap { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <div class="brand"><div class="logo">AI</div><div>Agent Platform</div></div>
+    <button class="btn" id="newChat">＋ New chat</button>
+    <div class="label">Conversations</div>
+    <div class="history" id="history"></div>
+    <div class="who">
+      <div>Signed in as <strong id="whoName">…</strong></div>
+      <div id="whoTenant"></div>
+      <select id="tokenSelect" title="Demo identities (static tokens)">
+        <option value="demo-user">demo-user (analyst)</option>
+        <option value="demo-viewer">demo-viewer (inventory only)</option>
+        <option value="demo-admin">demo-admin (platform admin)</option>
+        <option value="acme-user">acme-user (other tenant)</option>
+        <option value="__custom">Custom token / JWT…</option>
+      </select>
+      <input id="customToken" placeholder="Paste a bearer token" style="display:none" />
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div class="title">Enterprise AI Assistant</div>
+      <div class="status">
+        <span id="health"><span class="dot"></span> checking…</span>
+        <button class="btn small" id="toggleAgents">Agents</button>
+      </div>
+    </header>
+    <section id="chat"></section>
+    <div class="composer-wrap">
+      <form class="composer" id="composer">
+        <button type="button" class="icon-btn" id="attach" title="Attach documents">📎</button>
+        <input type="file" id="fileInput" multiple hidden accept=".txt,.md,.pdf,.docx,.html,.csv,.json" />
+        <textarea id="input" rows="1" placeholder="Ask your agents… (Enter to send, Shift+Enter for a new line)"></textarea>
+        <button class="icon-btn send" id="send" type="submit" title="Send">↑</button>
+      </form>
+      <div class="files" id="files"></div>
+      <div class="hint">Requests are resolved to capabilities, planned, policy-checked and executed by registered agents.</div>
+    </div>
+  </main>
+
+  <aside class="agents" id="agentsPanel">
+    <div class="label" style="padding-top:4px">Registered agents</div>
+    <div id="agentList"></div>
+  </aside>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+const state = {
+  token: store.get("aap_token", "demo-user"),
+  conversationId: null,
+  conversations: [],
+  messages: [],
+  pendingFiles: [],
+  busy: false,
+  me: null,
+};
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "c-" + Date.now() + Math.random().toString(16).slice(2));
+
+async function api(path, opts = {}) {
+  const headers = { Authorization: `Bearer ${state.token}`, ...(opts.body && !(opts.body instanceof FormData) ? { "Content-Type": "application/json" } : {}), ...(opts.headers || {}) };
+  const res = await fetch(path, { ...opts, headers });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) throw Object.assign(new Error(data?.detail || `HTTP ${res.status}`), { status: res.status, data });
+  return data;
+}
+
+/* ---------------- formatting & renderers ---------------- */
+function fmt(value, type, currency) {
+  if (value === null || value === undefined || value === "") return "";
+  const n = Number(value);
+  if (type === "currency" && !Number.isNaN(n)) {
+    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(n); }
+    catch { return n.toLocaleString(); }
+  }
+  if ((type === "number" || type === "percent") && !Number.isNaN(n)) return n.toLocaleString() + (type === "percent" ? "%" : "");
+  return esc(value);
+}
+function compact(n) {
+  const a = Math.abs(n);
+  if (a >= 1e9) return (n / 1e9).toFixed(1) + "B"; if (a >= 1e6) return (n / 1e6).toFixed(1) + "M";
+  if (a >= 1e3) return (n / 1e3).toFixed(0) + "k"; return String(Math.round(n));
+}
+const SERIES = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6"];
+const color = (i) => `var(${SERIES[i % SERIES.length]})`;
+const human = (s) => String(s).replace(/[_.-]+/g, " ").replace(/^\w/, c => c.toUpperCase());
+
+function renderMetrics(blocks) {
+  return `<div class="metrics">${blocks.map(b => `<div class="metric"><div class="t">${esc(b.title)}</div>
+    <div class="v">${fmt(b.value, b.format === "currency" ? "currency" : b.format, b.currency)}</div></div>`).join("")}</div>`;
+}
+function renderTable(b) {
+  const cols = b.columns || [];
+  const rows = b.rows || [];
+  return `<div class="card">${b.title ? `<div class="card-title">${esc(b.title)}</div>` : ""}<div class="scroll"><table>
+    <thead><tr>${cols.map(c => `<th>${esc(c.label || c.field)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(r => `<tr>${cols.map(c => `<td class="${["number", "currency"].includes(c.data_type) ? "num" : ""}">${fmt(r[c.field], c.data_type, b.currency)}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table></div></div>`;
+}
+function renderChart(b) {
+  const data = b.data || [], ys = b.y || [], x = b.x;
+  if (!data.length || !ys.length) return "";
+  const W = 640, H = 260, L = 56, R = 12, T = 12, B = 34, iw = W - L - R, ih = H - T - B;
+  let svg = "";
+  const legend = ys.map((y, i) => `<span><i style="background:${color(i)}"></i>${esc(human(y))}</span>`).join("");
+  if (b.chart_type === "pie") {
+    const y = ys[0], total = data.reduce((s, d) => s + Math.max(0, Number(d[y]) || 0), 0) || 1;
+    let a0 = -Math.PI / 2; const cx = W / 2, cy = H / 2, r = Math.min(iw, ih) / 2;
+    data.forEach((d, i) => {
+      const a1 = a0 + 2 * Math.PI * Math.max(0, Number(d[y]) || 0) / total;
+      const large = a1 - a0 > Math.PI ? 1 : 0;
+      svg += `<path d="M${cx},${cy} L${cx + r * Math.cos(a0)},${cy + r * Math.sin(a0)} A${r},${r} 0 ${large} 1 ${cx + r * Math.cos(a1)},${cy + r * Math.sin(a1)} Z" fill="${color(i)}" stroke="var(--bg)" stroke-width="2"><title>${esc(d[x])}: ${fmt(d[y], "currency", b.currency)}</title></path>`;
+      a0 = a1;
+    });
+    return `<div class="card"><div class="card-title">${esc(b.title)}</div><div class="chart"><svg viewBox="0 0 ${W} ${H}">${svg}</svg></div>
+      <div class="legend">${data.map((d, i) => `<span><i style="background:${color(i)}"></i>${esc(d[x])}</span>`).join("")}</div></div>`;
+  }
+  const max = Math.max(1, ...data.flatMap(d => ys.map(y => Number(d[y]) || 0)));
+  const ticks = 4;
+  for (let t = 0; t <= ticks; t++) {
+    const v = max * t / ticks, yy = T + ih - ih * t / ticks;
+    svg += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--border)"/>` +
+           `<text x="${L - 6}" y="${yy + 4}" text-anchor="end">${compact(v)}</text>`;
+  }
+  const band = iw / data.length;
+  data.forEach((d, i) => {
+    svg += `<text x="${L + band * i + band / 2}" y="${H - 12}" text-anchor="middle">${esc(String(d[x]).slice(0, 18))}</text>`;
+  });
+  if (b.chart_type === "line") {
+    ys.forEach((y, si) => {
+      const pts = data.map((d, i) => `${L + band * i + band / 2},${T + ih - ih * (Number(d[y]) || 0) / max}`).join(" ");
+      svg += `<polyline points="${pts}" fill="none" stroke="${color(si)}" stroke-width="2.5"/>`;
+      data.forEach((d, i) => svg += `<circle cx="${L + band * i + band / 2}" cy="${T + ih - ih * (Number(d[y]) || 0) / max}" r="3.5" fill="${color(si)}"><title>${esc(human(y))}: ${fmt(d[y], "number")}</title></circle>`);
+    });
+  } else {
+    const gw = band * 0.7, bw = gw / ys.length;
+    data.forEach((d, i) => ys.forEach((y, si) => {
+      const v = Number(d[y]) || 0, h = ih * v / max;
+      svg += `<rect x="${L + band * i + (band - gw) / 2 + bw * si}" y="${T + ih - h}" width="${Math.max(1, bw - 2)}" height="${h}" rx="3" fill="${color(si)}"><title>${esc(d[x])} — ${esc(human(y))}: ${fmt(v, b.currency ? "currency" : "number", b.currency)}</title></rect>`;
+    }));
+  }
+  return `<div class="card"><div class="card-title">${esc(b.title)}</div><div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(b.title)}">${svg}</svg></div><div class="legend">${legend}</div></div>`;
+}
+function renderCitations(b) {
+  return `<div class="card"><div class="card-title">${esc(b.title || "Sources")}</div><ol class="cites">${(b.items || []).map(c =>
+    `<li><div class="src">[${c.index}] ${esc(c.filename)}${c.page ? `, p.${c.page}` : ""}</div>${esc(c.snippet)}…</li>`).join("")}</ol></div>`;
+}
+function renderUI(blocks) {
+  if (!Array.isArray(blocks) || !blocks.length) return "";
+  const metrics = blocks.filter(b => b.type === "metric");
+  const rest = blocks.filter(b => b.type !== "metric").map(b => {
+    switch (b.type) {
+      case "table": return renderTable(b);
+      case "chart": return renderChart(b);
+      case "citations": return renderCitations(b);
+      case "text": return `<div class="text">${esc(b.text)}</div>`;
+      default: return "";   // unknown artifact types are ignored, by contract
+    }
+  }).join("");
+  return `<div class="blocks">${metrics.length ? renderMetrics(metrics) : ""}${rest}</div>`;
+}
+function renderTimeline(steps, plan) {
+  if (!plan || !plan.steps) return "";
+  return `<div class="timeline">${plan.steps.map(s => {
+    const st = (steps && steps[s.step_id]) || { status: "PENDING" };
+    const label = s.capability.replace(/^platform\./, "");
+    const extra = st.attempts > 1 ? ` ×${st.attempts}` : "";
+    const ms = st.duration_ms ? ` · ${Math.round(st.duration_ms)}ms` : "";
+    return `<span class="step ${st.status}" title="${esc(s.agent_id || "")} ${esc(st.skip_reason || st.error?.message || "")}"><span class="dot"></span>${esc(s.step_id)} · ${esc(label)}${extra}${ms}</span>`;
+  }).join("")}</div>`;
+}
+
+/* ---------------- chat rendering ---------------- */
+function renderChat() {
+  const chat = $("chat");
+  if (!state.messages.length) {
+    chat.innerHTML = `<div class="welcome"><h1>How can I help?</h1>
+      <p>Your request is matched to registered agent capabilities, planned as a workflow, checked against policy and executed — independent agents can run in parallel.</p>
+      <div class="suggestions" id="suggestions"></div></div>`;
+    loadSuggestions();
+    return;
+  }
+  chat.innerHTML = state.messages.map(m => {
+    const user = m.role === "user";
+    return `<div class="msg ${user ? "user" : "assistant"}"><div class="msg-inner">
+      <div class="avatar">${user ? "You" : "AI"}</div>
+      <div class="body">
+        ${!user ? renderTimeline(m.steps, m.plan) : ""}
+        <div class="text ${m.error ? "error" : ""}">${esc(m.content)}${m.pending ? " …" : ""}</div>
+        ${renderUI(m.ui)}
+        ${m.status ? `<div class="meta"><span class="chip st-${esc(m.status)}">${esc(m.status)}</span>
+          ${(m.capabilities || []).map(c => `<span class="chip">${esc(c)}</span>`).join("")}
+          ${m.execution_id ? `<span class="chip">exec ${esc(m.execution_id.slice(5, 13))}</span>` : ""}</div>` : ""}
+        ${m.plan ? `<details class="exec"><summary>Execution details</summary><pre>${esc(JSON.stringify({ plan: m.plan, steps: m.steps }, null, 2))}</pre></details>` : ""}
+      </div></div></div>`;
+  }).join("");
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function loadSuggestions() {
+  const el = $("suggestions");
+  if (!el) return;
+  let caps = [];
+  try { caps = await api("api/v1/capabilities"); } catch { }
+  const items = caps.filter(c => c.routable && c.examples?.length && !c.name.startsWith("platform."))
+    .map(c => ({ title: c.description || c.name, text: c.examples[0] }));
+  if (items.length >= 2) items.push({ title: "Compare across agents", text: "Compare " + items.slice(0, 2).map(i => i.title.toLowerCase()).join(" with ") });
+  items.push({ title: "Follow-up chart", text: "Now make it a bar chart" });
+  el.innerHTML = items.slice(0, 6).map(i => `<button class="suggestion" data-text="${esc(i.text)}"><strong>${esc(i.title)}</strong><span>${esc(i.text)}</span></button>`).join("");
+  el.querySelectorAll(".suggestion").forEach(b => b.onclick = () => { $("input").value = b.dataset.text; $("input").focus(); });
+}
+
+/* ---------------- conversations ---------------- */
+async function loadConversations() {
+  try { state.conversations = await api("api/v1/conversations"); } catch { state.conversations = []; }
+  $("history").innerHTML = state.conversations.map(c =>
+    `<div class="history-item ${c.conversation_id === state.conversationId ? "active" : ""}" data-id="${esc(c.conversation_id)}">${esc(c.title)}</div>`).join("");
+  $("history").querySelectorAll(".history-item").forEach(el => el.onclick = () => openConversation(el.dataset.id));
+}
+async function openConversation(id) {
+  state.conversationId = id;
+  const msgs = await api(`api/v1/conversations/${encodeURIComponent(id)}/messages`);
+  state.messages = msgs.map(m => ({ role: m.role, content: m.content, ui: m.data?.ui || [], status: m.data?.status,
+    capabilities: m.data?.capabilities, execution_id: m.data?.execution_id }));
+  renderChat(); loadConversations();
+}
+function newChat() {
+  state.conversationId = uid(); state.messages = []; state.pendingFiles = []; renderFiles(); renderChat(); loadConversations();
+  $("input").focus();
+}
+
+/* ---------------- sending (streaming) ---------------- */
+async function send(text) {
+  if (state.busy || !text.trim()) return;
+  state.busy = true; $("send").disabled = true;
+  if (!state.conversationId) state.conversationId = uid();
+  state.messages.push({ role: "user", content: text });
+  const reply = { role: "assistant", content: "Planning", pending: true, steps: {}, ui: [] };
+  state.messages.push(reply); renderChat();
+  try {
+    const attachments = [];
+    for (const f of state.pendingFiles) {
+      reply.content = `Ingesting ${f.name}`; renderChat();
+      const form = new FormData(); form.append("file", f, f.name); form.append("knowledge_base", `conversation:${state.conversationId}`);
+      const doc = await api("api/v1/documents", { method: "POST", body: form });
+      attachments.push(doc.document_id);
+    }
+    state.pendingFiles = []; renderFiles();
+    const res = await fetch("api/v1/chat/stream", {
+      method: "POST", headers: { Authorization: `Bearer ${state.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: state.conversationId, message: text, attachments }),
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.detail || `HTTP ${res.status}`); }
+    const reader = res.body.getReader(), dec = new TextDecoder(); let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+        const data = chunk.split("\n").filter(l => l.startsWith("data: ")).map(l => l.slice(6)).join("\n");
+        if (data) onEvent(reply, JSON.parse(data));
+      }
+    }
+  } catch (err) {
+    Object.assign(reply, { content: `Sorry — ${err.message}`, error: true, pending: false });
+  } finally {
+    reply.pending = false; state.busy = false; $("send").disabled = false; renderChat(); loadConversations();
+  }
+}
+function onEvent(reply, ev) {
+  const p = ev.payload || {};
+  switch (ev.event_type) {
+    case "PlanCreated": case "PlanValidated":
+      reply.plan = p.plan; reply.capabilities = p.capabilities || reply.capabilities; reply.content = "Running"; break;
+    case "ExecutionStepStarted": reply.steps[p.step_id] = { ...(reply.steps[p.step_id] || {}), status: "RUNNING", attempts: p.attempt }; break;
+    case "ExecutionStepRetrying": reply.steps[p.step_id] = { ...(reply.steps[p.step_id] || {}), status: "RUNNING", attempts: p.attempt + 1 }; break;
+    case "ExecutionStepCompleted": reply.steps[p.step_id] = { status: "SUCCEEDED", attempts: p.attempts, duration_ms: p.duration_ms }; break;
+    case "ExecutionStepFailed": reply.steps[p.step_id] = { status: "FAILED", attempts: p.attempts, error: p.error }; break;
+    case "ExecutionStepSkipped": reply.steps[p.step_id] = { status: "SKIPPED", skip_reason: p.reason }; break;
+    case "ExecutionCompleted": case "ExecutionFailed": case "ExecutionCancelled": case "PlanRejected": {
+      const r = p.response || {};
+      Object.assign(reply, { content: r.response || p.error?.message || "Done", ui: r.ui || [], status: r.status,
+        capabilities: r.capabilities, execution_id: r.execution_id, plan: r.plan || reply.plan,
+        steps: r.steps || reply.steps, error: ["FAILED", "REJECTED"].includes(r.status) && !(r.ui || []).length, pending: false });
+      break;
+    }
+  }
+  renderChat();
+}
+
+/* ---------------- agents panel ---------------- */
+async function loadAgents() {
+  const list = $("agentList");
+  try {
+    const agents = await api("api/v1/agents");
+    const admin = state.me?.permissions?.includes("platform.admin");
+    list.innerHTML = agents.map(a => `<div class="agent">
+      <div class="row"><strong>${esc(a.name)}</strong><span title="${esc(a.health_detail || a.health)}"><span class="dot ${esc(a.health)}"></span> ${esc(a.health)}</span></div>
+      <div class="sub">${esc(a.agent_id)}@${esc(a.version)} · ${esc(a.runtime_type === "local" ? "built-in" : "service")} · ${esc(a.status)}</div>
+      <div class="caps">${a.capabilities.map(esc).join(", ")}</div>
+      ${admin && !a.agent_id.startsWith("platform-") ? `<div style="margin-top:6px"><button class="btn small" data-agent="${esc(a.agent_id)}" data-version="${esc(a.version)}" data-next="${a.status === "active" ? "disabled" : "active"}">${a.status === "active" ? "Disable" : "Enable"}</button></div>` : ""}
+    </div>`).join("") || `<div class="sub">No agents registered.</div>`;
+    list.querySelectorAll("button[data-agent]").forEach(b => b.onclick = async () => {
+      await api(`api/v1/agents/${b.dataset.agent}/status?version=${encodeURIComponent(b.dataset.version)}`, { method: "PATCH", body: JSON.stringify({ status: b.dataset.next }) });
+      loadAgents();
+    });
+  } catch (e) { list.innerHTML = `<div class="sub">${esc(e.message)}</div>`; }
+}
+
+/* ---------------- identity & health ---------------- */
+async function loadMe() {
+  try {
+    state.me = await api("api/v1/me");
+    $("whoName").textContent = state.me.display_name || state.me.user_id;
+    $("whoTenant").textContent = `tenant: ${state.me.tenant_id}`;
+  } catch (e) { $("whoName").textContent = "not authenticated"; $("whoTenant").textContent = e.message; }
+}
+async function checkHealth() {
+  try {
+    const r = await fetch("ready"); const ok = r.ok;
+    $("health").innerHTML = `<span class="dot ${ok ? "ok" : "bad"}"></span> ${ok ? "Platform ready" : "Not ready"}`;
+  } catch { $("health").innerHTML = `<span class="dot bad"></span> Unreachable`; }
+}
+function setToken(token) {
+  state.token = token; store.set("aap_token", token);
+  newChat(); loadMe().then(() => { if ($("app").classList.contains("with-agents")) loadAgents(); });
+}
+
+/* ---------------- files ---------------- */
+function renderFiles() {
+  $("files").innerHTML = state.pendingFiles.map((f, i) => `<span class="chip">${esc(f.name)} <a href="#" data-i="${i}">✕</a></span>`).join("");
+  $("files").querySelectorAll("a").forEach(a => a.onclick = (e) => { e.preventDefault(); state.pendingFiles.splice(+a.dataset.i, 1); renderFiles(); });
+}
+
+/* ---------------- wiring ---------------- */
+$("composer").addEventListener("submit", (e) => { e.preventDefault(); const t = $("input").value; $("input").value = ""; autosize(); send(t); });
+$("input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("composer").requestSubmit(); } });
+const autosize = () => { const el = $("input"); el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 180) + "px"; };
+$("input").addEventListener("input", autosize);
+$("newChat").onclick = newChat;
+$("attach").onclick = () => $("fileInput").click();
+$("fileInput").onchange = (e) => { state.pendingFiles.push(...e.target.files); e.target.value = ""; renderFiles(); };
+$("toggleAgents").onclick = () => {
+  const show = $("app").classList.toggle("with-agents");
+  if (show) loadAgents();
+};
+const sel = $("tokenSelect");
+if ([...sel.options].some(o => o.value === state.token)) sel.value = state.token;
+else { sel.value = "__custom"; $("customToken").style.display = "block"; $("customToken").value = state.token; }
+sel.onchange = () => {
+  const custom = sel.value === "__custom"; $("customToken").style.display = custom ? "block" : "none";
+  if (!custom) setToken(sel.value);
+};
+$("customToken").onchange = (e) => e.target.value.trim() && setToken(e.target.value.trim());
+
+state.conversationId = uid();
+renderChat(); loadMe(); loadConversations(); checkHealth();
+setInterval(checkHealth, 30000);
+setInterval(() => { if ($("app").classList.contains("with-agents")) loadAgents(); }, 10000);
+</script>
+</body>
+</html>

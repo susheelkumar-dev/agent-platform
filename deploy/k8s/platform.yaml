@@ -1,0 +1,81 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: agent-platform-migrate
+  namespace: agent-platform
+  annotations: {argocd.argoproj.io/hook: PreSync, helm.sh/hook: pre-install,pre-upgrade}
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext: {runAsNonRoot: true, runAsUser: 10001}
+      containers:
+        - name: migrate
+          image: your-registry/agent-platform:1.0.0
+          command: ["alembic", "upgrade", "head"]
+          envFrom: [{secretRef: {name: agent-platform-secrets}}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-platform
+  namespace: agent-platform
+  labels: {app: agent-platform}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: agent-platform}}
+  strategy: {rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  template:
+    metadata:
+      labels: {app: agent-platform, agent-platform/role: platform}
+      annotations: {prometheus.io/scrape: "true", prometheus.io/port: "8000", prometheus.io/path: /metrics}
+    spec:
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, fsGroup: 10001}
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: platform
+          image: your-registry/agent-platform:1.0.0
+          ports: [{containerPort: 8000, name: http}]
+          envFrom:
+            - configMapRef: {name: agent-platform-config}
+            - secretRef: {name: agent-platform-secrets}
+          readinessProbe: {httpGet: {path: /ready, port: http}, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /health, port: http}, periodSeconds: 20}
+          resources:
+            requests: {cpu: 250m, memory: 384Mi}
+            limits: {cpu: "2", memory: 1Gi}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes: [{name: tmp, emptyDir: {}}]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-platform
+  namespace: agent-platform
+spec:
+  selector: {app: agent-platform}
+  ports: [{name: http, port: 80, targetPort: 8000}]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agent-platform
+  namespace: agent-platform
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: agent-platform}
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource: {name: cpu, target: {type: Utilization, averageUtilization: 70}}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agent-platform
+  namespace: agent-platform
+spec:
+  minAvailable: 1
+  selector: {matchLabels: {app: agent-platform}}

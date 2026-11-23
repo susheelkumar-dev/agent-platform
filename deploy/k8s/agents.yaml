@@ -1,0 +1,44 @@
+# Example agent deployments. Each team owns and scales its agent independently.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-agent
+  namespace: agent-platform
+  labels: {app: inventory-agent}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: inventory-agent}}
+  template:
+    metadata:
+      labels: {app: inventory-agent, agent-platform/role: agent}
+    spec:
+      securityContext: {runAsNonRoot: true, runAsUser: 10001}
+      containers:
+        - name: agent
+          image: your-registry/inventory-agent:1.1.0
+          ports: [{containerPort: 8080, name: http}]
+          env:
+            - {name: AGENT_PLATFORM_URL, value: "http://agent-platform.agent-platform.svc.cluster.local"}
+            - {name: AGENT_SERVICE_URL, value: "http://inventory-agent.agent-platform.svc.cluster.local"}
+            - {name: LOG_FORMAT, value: json}
+            - name: AGENT_REGISTRATION_TOKEN
+              valueFrom: {secretKeyRef: {name: agent-platform-secrets, key: REGISTRATION_TOKEN}}
+            - name: AGENT_SERVICE_TOKEN
+              valueFrom: {secretKeyRef: {name: agent-platform-secrets, key: AGENT_SERVICE_TOKEN}}
+            - name: AGENT_SIGNING_SECRET
+              valueFrom: {secretKeyRef: {name: agent-platform-secrets, key: SIGNING_SECRET}}
+          readinessProbe: {httpGet: {path: /ready, port: http}, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /health, port: http}, periodSeconds: 20}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-agent
+  namespace: agent-platform
+spec:
+  selector: {app: inventory-agent}
+  ports: [{name: http, port: 80, targetPort: 8080}]

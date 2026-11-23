@@ -1,0 +1,11 @@
+{
+  "gridtrade": {
+    "title": "GridTrade Contracts",
+    "issuer": "gridtrade",
+    "audience": "gridtrade-app",
+    "secretEnv": "GT_JWT_SECRET",
+    "permissionCatalogUrl": "http://localhost:5080/api/permissions",
+    "registerPermission": "displays.register",
+    "adminPermission": "displays.register"
+  }
+}

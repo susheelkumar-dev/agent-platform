@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: agent-platform
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - platform.yaml
+  - agents.yaml
+  - networkpolicy.yaml
+# secrets.example.yaml is intentionally excluded: provision the Secret from your secret manager.

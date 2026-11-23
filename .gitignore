@@ -1,0 +1,25 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.env
+# the platform's local data folder only (agents/*/runtime/src/data is source)
+/data/
+*.db
+*.db-wal
+*.db-shm
+node_modules/
+sdk/typescript/dist/
+# agentctl scaffolds into ./agents; only the root folder is ignored (examples/agents is source)
+/agents/*
+!/agents/extjs-migration-agent/
+.DS_Store
+.vs/
+.idea/
+.vscode/
+.pytest-tmp/

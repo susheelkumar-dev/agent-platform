@@ -1,0 +1,47 @@
+{
+  "name": "@extreact/framework",
+  "version": "1.1.2",
+  "description": "React application framework for migrated Ext JS apps: sign-in, server-driven menus, display host and registry, Summary / Entry / Master-Slave templates, DataGrid, and the host for Ext-style screens.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-css.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "pack:local": "npm run build && npm pack --pack-destination ../packages"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1 || ^19.0.0",
+    "react-dom": "^18.3.1 || ^19.0.0",
+    "ag-grid-community": "36.2.0",
+    "ag-grid-react": "36.2.0",
+    "write-excel-file": "^4.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "ag-grid-community": "36.2.0",
+    "ag-grid-react": "36.2.0",
+    "jsdom": "24.1.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.5.4",
+    "vitest": "2.0.5",
+    "write-excel-file": "4.1.1"
+  }
+}

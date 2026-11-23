@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "extjs-migration-agent"
+version = "1.0.0"
+description = "Ext JS to React + TypeScript migration agent (CLI + AI Agent Platform service)."
+requires-python = ">=3.11"
+dependencies = ["esprima>=4.0.1"]
+
+[project.optional-dependencies]
+service = ["ai-agent-platform"]
+
+[project.scripts]
+extjs-migrate = "extjs_migrator.cli:main"
+
+[tool.setuptools]
+packages = ["extjs_migrator"]
+
+[tool.setuptools.package-data]
+extjs_migrator = []

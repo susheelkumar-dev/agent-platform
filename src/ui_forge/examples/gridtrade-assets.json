@@ -1,0 +1,789 @@
+{
+  "entities": [
+    {
+      "schemaVersion": "1.0",
+      "kind": "entity",
+      "name": "GenerationAsset",
+      "label": "Generation Asset",
+      "plural": "Generation Assets",
+      "module": "assets",
+      "endpoint": "/generation-assets",
+      "titleField": "name",
+      "description": "A generating unit or storage plant whose capacity GridTrade contracts and schedules.",
+      "fields": [
+        {
+          "name": "code",
+          "label": "Code",
+          "required": true,
+          "unique": true,
+          "maxLength": 10,
+          "upperCase": true,
+          "pattern": "^[A-Z0-9-]+$",
+          "patternMessage": "Use letters, digits and '-'",
+          "example": "SOL-001"
+        },
+        {
+          "name": "name",
+          "label": "Name",
+          "required": true,
+          "unique": true,
+          "maxLength": 80,
+          "example": "Rewa Solar Park"
+        },
+        {
+          "name": "assetType",
+          "label": "Type",
+          "dataType": "enum",
+          "required": true,
+          "options": [
+            "Solar",
+            "Wind",
+            "Hydro",
+            "Thermal",
+            "Battery"
+          ],
+          "defaultValue": "Solar"
+        },
+        {
+          "name": "capacityMw",
+          "label": "Capacity (MW)",
+          "dataType": "decimal",
+          "required": true,
+          "min": 0.1,
+          "max": 5000,
+          "decimals": 2,
+          "example": 250
+        },
+        {
+          "name": "ownerId",
+          "label": "Owner",
+          "dataType": "lookup",
+          "required": true,
+          "lookup": {
+            "endpoint": "/lookups/counterparties"
+          },
+          "description": "the counterparty that owns the asset"
+        },
+        {
+          "name": "region",
+          "label": "Region",
+          "dataType": "lookup",
+          "lookup": {
+            "endpoint": "/lookups/regions"
+          }
+        },
+        {
+          "name": "commissionedOn",
+          "label": "Commissioned on",
+          "dataType": "date"
+        },
+        {
+          "name": "tariffInrMwh",
+          "label": "Tariff (INR/MWh)",
+          "dataType": "currency",
+          "currency": "INR",
+          "min": 0,
+          "decimals": 2
+        },
+        {
+          "name": "dispatchTags",
+          "label": "Dispatch tags",
+          "dataType": "enum",
+          "multiple": true,
+          "options": [
+            "Must-run",
+            "Peaker",
+            "RTC",
+            "Merchant"
+          ]
+        },
+        {
+          "name": "gridConnected",
+          "label": "Grid connected",
+          "dataType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "status",
+          "label": "Status",
+          "dataType": "enum",
+          "options": [
+            "Planned",
+            "Operational",
+            "Retired"
+          ],
+          "defaultValue": "Operational",
+          "readOnly": true,
+          "description": "set by the Retire action"
+        },
+        {
+          "name": "notes",
+          "label": "Notes",
+          "dataType": "text",
+          "maxLength": 1000
+        }
+      ],
+      "permissions": {
+        "view": "assets.view",
+        "create": "assets.edit",
+        "update": "assets.edit",
+        "delete": "assets.delete"
+      },
+      "permissionModule": {
+        "module": "assets",
+        "label": "Assets",
+        "actions": [
+          "view",
+          "edit",
+          "delete"
+        ],
+        "grants": {
+          "Trader": [
+            "view"
+          ],
+          "Operations": [
+            "view",
+            "edit",
+            "delete"
+          ],
+          "Risk Manager": [
+            "view"
+          ],
+          "Read Only": [
+            "view"
+          ]
+        }
+      },
+      "backend": {
+        "generate": true,
+        "customActions": [
+          "retire"
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "kind": "entity",
+      "name": "AssetOutage",
+      "label": "Asset Outage",
+      "plural": "Asset Outages",
+      "module": "assets",
+      "endpoint": "/asset-outages",
+      "titleField": "reference",
+      "description": "Planned or forced unavailability of a generation asset.",
+      "fields": [
+        {
+          "name": "assetId",
+          "label": "Asset",
+          "dataType": "lookup",
+          "required": true,
+          "lookup": {
+            "endpoint": "/generation-assets",
+            "labelField": "name"
+          }
+        },
+        {
+          "name": "reference",
+          "label": "Reference",
+          "required": true,
+          "unique": true,
+          "maxLength": 20,
+          "upperCase": true,
+          "example": "OUT-0001"
+        },
+        {
+          "name": "outageType",
+          "label": "Outage type",
+          "dataType": "enum",
+          "required": true,
+          "options": [
+            "Planned",
+            "Forced"
+          ],
+          "defaultValue": "Planned"
+        },
+        {
+          "name": "status",
+          "label": "Status",
+          "dataType": "enum",
+          "options": [
+            "Requested",
+            "Approved",
+            "Rejected",
+            "Completed"
+          ],
+          "defaultValue": "Requested"
+        },
+        {
+          "name": "startAt",
+          "label": "Starts",
+          "dataType": "datetime",
+          "required": true,
+          "example": "2026-11-02T06:00"
+        },
+        {
+          "name": "endAt",
+          "label": "Ends",
+          "dataType": "datetime",
+          "required": true,
+          "example": "2026-11-03T18:00"
+        },
+        {
+          "name": "unavailableMw",
+          "label": "Unavailable (MW)",
+          "dataType": "decimal",
+          "required": true,
+          "min": 0,
+          "decimals": 2,
+          "example": 120
+        },
+        {
+          "name": "reason",
+          "label": "Reason",
+          "dataType": "text",
+          "required": true,
+          "maxLength": 500,
+          "example": "Inverter replacement"
+        }
+      ],
+      "permissions": {
+        "view": "assets.view",
+        "create": "assets.edit",
+        "update": "assets.edit",
+        "delete": "assets.delete"
+      },
+      "parent": {
+        "entity": "GenerationAsset",
+        "field": "assetId",
+        "onParentDelete": "restrict"
+      },
+      "backend": {
+        "generate": true
+      }
+    }
+  ],
+  "displays": [
+    {
+      "schemaVersion": "1.0",
+      "kind": "display",
+      "id": "assets.generation-assets",
+      "name": "GenerationAssetSummary",
+      "title": "Generation Assets",
+      "description": "Search, filter and manage generation assets.",
+      "type": "summary",
+      "module": "assets",
+      "route": "assets/generation-assets",
+      "icon": "x-fa fa-solar-panel",
+      "entity": "GenerationAsset",
+      "folders": [
+        {
+          "id": "assets",
+          "title": "Assets",
+          "icon": "x-fa fa-solar-panel",
+          "sortOrder": 55
+        }
+      ],
+      "menu": {
+        "id": "assets.generation-assets",
+        "title": "Generation Assets",
+        "parent": "assets",
+        "icon": "x-fa fa-industry",
+        "sortOrder": 10
+      },
+      "summary": {
+        "columns": [
+          {
+            "field": "code",
+            "width": 110
+          },
+          {
+            "field": "name",
+            "flex": 1.4
+          },
+          {
+            "field": "assetType",
+            "width": 120,
+            "renderer": "badge",
+            "badgeTones": {
+              "Solar": "amber",
+              "Wind": "blue",
+              "Hydro": "blue",
+              "Thermal": "gray",
+              "Battery": "green"
+            }
+          },
+          {
+            "field": "capacityMw",
+            "width": 140
+          },
+          {
+            "field": "ownerId",
+            "label": "Owner",
+            "flex": 1
+          },
+          {
+            "field": "region",
+            "width": 110
+          },
+          {
+            "field": "commissionedOn",
+            "width": 150
+          },
+          {
+            "field": "tariffInrMwh",
+            "width": 170
+          },
+          {
+            "field": "status",
+            "width": 130,
+            "renderer": "badge",
+            "badgeTones": {
+              "Planned": "blue",
+              "Operational": "green",
+              "Retired": "gray"
+            }
+          },
+          {
+            "field": "gridConnected",
+            "label": "Grid",
+            "width": 90
+          }
+        ],
+        "searchFields": [
+          {
+            "field": "assetType"
+          },
+          {
+            "field": "region"
+          },
+          {
+            "field": "status"
+          },
+          {
+            "field": "capacityMw",
+            "label": "Capacity (MW)",
+            "operator": "between"
+          },
+          {
+            "field": "commissionedOn",
+            "operator": "between"
+          }
+        ],
+        "remote": true,
+        "pageSize": 25,
+        "sorters": [
+          {
+            "field": "name"
+          }
+        ],
+        "toolbarActions": [
+          {
+            "id": "new",
+            "kind": "new"
+          },
+          {
+            "id": "open",
+            "kind": "open"
+          },
+          {
+            "id": "retire",
+            "kind": "custom",
+            "label": "Retire",
+            "path": "retire",
+            "confirm": "Retire the selected asset(s)? They stay in the list as Retired.",
+            "permission": "update"
+          },
+          {
+            "id": "delete",
+            "kind": "delete"
+          },
+          {
+            "id": "refresh",
+            "kind": "refresh"
+          }
+        ],
+        "rowActions": [
+          {
+            "id": "open",
+            "kind": "open",
+            "label": "Open"
+          },
+          {
+            "id": "retire",
+            "kind": "custom",
+            "label": "Retire",
+            "path": "retire",
+            "permission": "update"
+          },
+          {
+            "id": "delete",
+            "kind": "delete",
+            "label": "Delete"
+          }
+        ],
+        "emptyText": "No generation assets match these criteria.",
+        "entryDisplay": "assets.generation-asset"
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "kind": "display",
+      "id": "assets.generation-asset",
+      "name": "GenerationAssetEntry",
+      "title": "Generation Asset",
+      "type": "entry",
+      "module": "assets",
+      "route": "assets/generation-asset",
+      "icon": "x-fa fa-industry",
+      "entity": "GenerationAsset",
+      "menu": {
+        "id": "assets.new-asset",
+        "title": "New Generation Asset",
+        "parent": "assets",
+        "icon": "x-fa fa-plus",
+        "sortOrder": 20,
+        "params": {
+          "id": "new"
+        },
+        "requiredPermissions": [
+          "assets.edit"
+        ]
+      },
+      "entry": {
+        "columns": 2,
+        "sections": [
+          {
+            "id": "general",
+            "title": "General",
+            "kind": "tab",
+            "items": [
+              {
+                "field": "code",
+                "placeholder": "e.g. SOL-001",
+                "readOnlyOnEdit": true
+              },
+              {
+                "field": "name"
+              },
+              {
+                "field": "assetType",
+                "widget": "radio",
+                "span": 2
+              },
+              {
+                "field": "ownerId"
+              },
+              {
+                "field": "region"
+              },
+              {
+                "field": "status"
+              }
+            ]
+          },
+          {
+            "id": "technical",
+            "title": "Technical",
+            "kind": "tab",
+            "items": [
+              {
+                "field": "capacityMw"
+              },
+              {
+                "field": "commissionedOn"
+              },
+              {
+                "field": "tariffInrMwh"
+              },
+              {
+                "field": "gridConnected",
+                "widget": "switch"
+              },
+              {
+                "field": "dispatchTags",
+                "widget": "multiselect",
+                "span": 2,
+                "visibleWhen": {
+                  "field": "assetType",
+                  "equals": [
+                    "Solar",
+                    "Wind",
+                    "Hydro",
+                    "Thermal",
+                    "Battery"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "notes",
+            "title": "Notes",
+            "kind": "panel",
+            "collapsible": true,
+            "items": [
+              {
+                "field": "notes",
+                "span": 2,
+                "placeholder": "Anything operations should know"
+              }
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "save",
+            "kind": "save"
+          },
+          {
+            "id": "copy",
+            "kind": "copy"
+          },
+          {
+            "id": "audit",
+            "kind": "audit",
+            "label": "History"
+          },
+          {
+            "id": "retire",
+            "kind": "custom",
+            "label": "Retire",
+            "path": "retire",
+            "confirm": "Retire this asset? It stays in the list as Retired.",
+            "permission": "update"
+          },
+          {
+            "id": "reset",
+            "kind": "reset"
+          },
+          {
+            "id": "delete",
+            "kind": "delete"
+          },
+          {
+            "id": "cancel",
+            "kind": "cancel",
+            "label": "Close"
+          }
+        ],
+        "copyExclude": [
+          "code"
+        ],
+        "summaryDisplay": "assets.generation-assets"
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "kind": "display",
+      "id": "assets.asset-outages",
+      "name": "AssetOutageMasterSlave",
+      "title": "Asset Outages",
+      "description": "Pick an asset on the left; plan and track its outages on the right.",
+      "type": "master-slave",
+      "module": "assets",
+      "route": "assets/asset-outages",
+      "icon": "x-fa fa-plug",
+      "menu": {
+        "id": "assets.asset-outages",
+        "title": "Asset Outages",
+        "parent": "assets",
+        "icon": "x-fa fa-plug",
+        "sortOrder": 30
+      },
+      "masterSlave": {
+        "master": {
+          "entity": "GenerationAsset",
+          "summary": {
+            "columns": [
+              {
+                "field": "code",
+                "width": 100
+              },
+              {
+                "field": "name",
+                "flex": 1
+              },
+              {
+                "field": "assetType",
+                "width": 100
+              },
+              {
+                "field": "capacityMw",
+                "width": 120
+              },
+              {
+                "field": "status",
+                "width": 120,
+                "renderer": "badge",
+                "badgeTones": {
+                  "Planned": "blue",
+                  "Operational": "green",
+                  "Retired": "gray"
+                }
+              }
+            ],
+            "searchFields": [
+              {
+                "field": "assetType"
+              }
+            ],
+            "sorters": [
+              {
+                "field": "name"
+              }
+            ],
+            "toolbarActions": [
+              {
+                "id": "refresh",
+                "kind": "refresh"
+              }
+            ]
+          }
+        },
+        "detail": {
+          "entity": "AssetOutage",
+          "relation": "child",
+          "linkField": "assetId",
+          "summary": {
+            "columns": [
+              {
+                "field": "reference",
+                "width": 120
+              },
+              {
+                "field": "outageType",
+                "width": 110,
+                "renderer": "badge",
+                "badgeTones": {
+                  "Planned": "blue",
+                  "Forced": "red"
+                }
+              },
+              {
+                "field": "startAt",
+                "width": 160
+              },
+              {
+                "field": "endAt",
+                "width": 160
+              },
+              {
+                "field": "unavailableMw",
+                "width": 150
+              },
+              {
+                "field": "status",
+                "width": 120,
+                "renderer": "badge",
+                "badgeTones": {
+                  "Requested": "amber",
+                  "Approved": "green",
+                  "Rejected": "red",
+                  "Completed": "gray"
+                }
+              }
+            ],
+            "sorters": [
+              {
+                "field": "startAt",
+                "direction": "DESC"
+              }
+            ],
+            "toolbarActions": [
+              {
+                "id": "new",
+                "kind": "new",
+                "label": "New outage"
+              },
+              {
+                "id": "delete",
+                "kind": "delete"
+              },
+              {
+                "id": "refresh",
+                "kind": "refresh"
+              }
+            ]
+          },
+          "entry": {
+            "columns": 2,
+            "sections": [
+              {
+                "id": "outage",
+                "title": "Outage",
+                "kind": "panel",
+                "items": [
+                  {
+                    "field": "reference",
+                    "placeholder": "OUT-0001"
+                  },
+                  {
+                    "field": "outageType",
+                    "widget": "radio"
+                  },
+                  {
+                    "field": "status"
+                  }
+                ]
+              },
+              {
+                "id": "window",
+                "title": "Window",
+                "kind": "panel",
+                "items": [
+                  {
+                    "field": "startAt"
+                  },
+                  {
+                    "field": "endAt"
+                  },
+                  {
+                    "field": "unavailableMw"
+                  }
+                ]
+              },
+              {
+                "id": "reason",
+                "title": "Reason",
+                "kind": "panel",
+                "items": [
+                  {
+                    "field": "reason",
+                    "span": 2
+                  }
+                ]
+              }
+            ],
+            "actions": [
+              {
+                "id": "save",
+                "kind": "save"
+              },
+              {
+                "id": "audit",
+                "kind": "audit",
+                "label": "History"
+              },
+              {
+                "id": "reset",
+                "kind": "reset"
+              },
+              {
+                "id": "delete",
+                "kind": "delete"
+              },
+              {
+                "id": "cancel",
+                "kind": "cancel",
+                "label": "Close"
+              }
+            ]
+          }
+        },
+        "orientation": "horizontal",
+        "split": 42,
+        "unsavedChanges": "confirm"
+      }
+    }
+  ]
+}

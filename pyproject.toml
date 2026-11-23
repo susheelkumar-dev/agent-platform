@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-agent-platform"
+version = "1.0.0rc1"
+description = "Drop-in agentic AI infrastructure: registry, routing, planning, orchestration, LLM gateway, RAG, security and observability for independently deployed agent microservices."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+# Base install = what an *agent service* needs (the SDK). Kept deliberately light.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "httpx>=0.28",
+]
+
+[project.optional-dependencies]
+# Everything the platform server itself needs.
+platform = [
+    "sqlalchemy[asyncio]>=2.0.36",
+    "aiosqlite>=0.20",
+    "asyncpg>=0.30",
+    "pyjwt[crypto]>=2.10",
+    "python-multipart>=0.0.20",
+    "jsonschema>=4.23",
+    "pypdf>=5.0",
+    "alembic>=1.14",
+]
+langgraph = ["langgraph>=0.6"]
+otel = ["opentelemetry-api>=1.30", "opentelemetry-sdk>=1.30", "opentelemetry-exporter-otlp>=1.30"]
+dev = [
+    "ai-agent-platform[platform,langgraph]",
+    "pytest>=8.3",
+    "anyio>=4.6",
+    "ruff>=0.11",
+]
+
+[project.scripts]
+agentctl = "agentctl.cli:main"
+agent-platform = "platform_api.main:run"
+display-registry = "display_registry.main:run"
+ui-forge = "ui_forge.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+platform_api = ["static/*"]
+ui_forge = ["static/**/*", "examples/*.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+markers = ["slow: real network/process tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests", "examples"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+ignore = ["B008", "E501", "UP042", "B904"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ui_forge", "ai_core", "ai_agents", "ai_agent_sdk", "ai_tools", "ai_storage", "ai_orchestration", "ai_runtime", "ai_llm", "ai_rag", "ai_memory", "ai_security", "ai_observability", "ai_platform_client", "platform_api", "agentctl", "examples", "tests"]

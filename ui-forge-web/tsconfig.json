@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@extreact/framework": ["../agents/extjs-migration-agent/framework/src"],
+      "react": ["./node_modules/@types/react"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime"],
+      "react-dom/client": ["./node_modules/@types/react-dom/client"],
+      "ag-grid-community": ["./node_modules/ag-grid-community"],
+      "ag-grid-react": ["./node_modules/ag-grid-react"],
+      "write-excel-file": ["./node_modules/write-excel-file"]
+    }
+  },
+  "include": ["src", "tests"]
+}

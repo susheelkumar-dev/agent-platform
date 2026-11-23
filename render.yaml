@@ -1,0 +1,33 @@
+# Render Blueprint (free plan, no card): New + > Blueprint > pick this repo. Render builds agent-service/Dockerfile,
+# passes $PORT and checks /health. Secrets marked sync:false are asked for once in the dashboard.
+# The free plan sleeps after ~15 minutes idle; the portfolio shows a "waking up" notice while it starts.
+services:
+  - type: web
+    name: agent-service
+    runtime: docker
+    plan: free
+    rootDir: agent-service
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: GRIDTRADE_API_URL
+        sync: false
+      - key: GRIDTRADE_USER
+        value: ops.analyst
+      - key: GRIDTRADE_PASSWORD
+        sync: false

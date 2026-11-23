@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push: {branches: [main]}
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    services:
+      postgres:
+        image: postgres:17
+        env: {POSTGRES_DB: agent_platform_test, POSTGRES_USER: agent, POSTGRES_PASSWORD: agent}
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U agent" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://agent:agent@localhost:5432/agent_platform_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "${{ matrix.python }}"}
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests examples
+      - name: migrations apply cleanly and match the ORM
+        env: {DATABASE_URL: "${{ env.TEST_DATABASE_URL }}"}
+        run: alembic upgrade head && alembic check && alembic downgrade base
+      - run: pytest -q
+      - name: SDK installs without platform extras
+        run: |
+          python -m venv /tmp/sdk && /tmp/sdk/bin/pip install -q .
+          /tmp/sdk/bin/python -c "import ai_agent_sdk, sys; assert 'sqlalchemy' not in sys.modules"
+
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - run: cd sdk/typescript && npm install && npm run typecheck
+
+  images:
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f deploy/docker/platform.Dockerfile -t agent-platform:ci .
+      - run: docker build -f deploy/docker/agent.Dockerfile --build-arg AGENT_DIR=examples/agents/inventory_agent -t inventory-agent:ci .
+      - name: compose smoke test
+        run: |
+          docker compose up -d --build
+          for i in $(seq 1 60); do curl -fs localhost:8000/ready && break; sleep 2; done
+          for i in $(seq 1 30); do
+            n=$(curl -fs -H "Authorization: Bearer demo-user" localhost:8000/api/v1/agents | python3 -c "import sys,json; print(sum(a['routable'] and a['runtime_type']=='remote_http' for a in json.load(sys.stdin)))")
+            [ "$n" = "2" ] && break; sleep 2
+          done
+          curl -fs -H "Authorization: Bearer demo-user" -H "Content-Type: application/json" \
+            -d '{"message":"Compare inventory valuation with trading exposure"}' localhost:8000/api/v1/chat \
+            | python3 -c "import sys,json; b=json.load(sys.stdin); assert b['status']=='COMPLETED', b; print(b['response'])"
+      - if: always()
+        run: docker compose logs --no-color | tail -200; docker compose down -v
